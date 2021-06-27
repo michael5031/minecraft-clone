@@ -3,10 +3,13 @@ import { Block, Gras, Dirt } from "./block.js";
 // import * as noise from "./perlin.js"
 
 export class Chunk {
-  constructor(initPos) {
-    this.initialize(initPos);
+  constructor(initPos, chunkSize) {
+    this.initialize(initPos, chunkSize);
   }
-  initialize(initPos) {
+  initialize(initPos, chunkSize) {
+    this.chunkSize = chunkSize;
+    this.surroundingChunks = {};
+
     this.blocks = [];
 
     this.geometry = new THREE.BufferGeometry();
@@ -26,7 +29,7 @@ export class Chunk {
 
     //       -1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0,
     //     ];
-    this.amountVerts = 30000 * 3;
+    this.amountVerts = 20000 * 3;
     this.rescaleAmount = 1;
     this.positions = new Int16Array(this.amountVerts * this.rescaleAmount);
     this.positionsSize = 0;
@@ -77,10 +80,13 @@ export class Chunk {
           return elem;
       }
     });
-
+    // if (direction != Block.Direction.up) {
+    //   return;
+    // }
     for (let i = 0; i < absoluteVerts.length; i++) {
       this.potentialRescaleGeometryBuffer();
       this.positions[this.positionsSize] = absoluteVerts[i];
+
       this.positionsSize++;
     }
     let calc = 16 / 256;
@@ -167,17 +173,107 @@ export class Chunk {
   }
 
   removeFace(direction, p) {
-    for (let i = 0; i < 100; i++) {
-      console.log(this.uvs[i]);
+    let blockVertsUp = Block.DirectionalFaces[direction];
+    let numState = 0;
+    let calcUp = blockVertsUp.map((elem) => {
+      numState++;
+      if (numState == 4) {
+        numState = 1;
+      }
+      switch (numState) {
+        case 1:
+          return elem + p.x * 2;
+        case 2:
+          return elem + p.y * 2;
+        case 3:
+          return elem + p.z * 2;
+
+        default:
+          return elem;
+      }
+    });
+    //console.log(calcUp);
+    let foundId = -1;
+
+    for (let i = 0; i < this.positionsSize; i += 18) {
+      let split = this.positions.slice(i, i + 18);
+
+      let found = false;
+      for (let j = 0; j < split.length; j++) {
+        if (split[j] != calcUp[j]) {
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        foundId = i;
+        for (let j = 0; j < split.length; j++) {
+          this.positions[foundId + j] = 0;
+        }
+        break;
+      }
     }
-  }
-  /*
-  removeEdges(chunk, direction){
-    if(direction == Block.Direction.left){
-      for()
+    if (foundId != -1) {
     }
+
+    // for (let i = 0; i < this.blocks.length; i++) {
+    //   if (this.blocks[i].position == p) {
+    //     this.blocks.splice(i, 1);
+    //   }
+    // }
+
+    // this.updateGeometry();
   }
-  */
+
+  removeEdges(direction) {
+    let nextChunk = this.surroundingChunks[direction];
+    if (nextChunk == undefined) {
+      return undefined;
+    }
+    let actuallyDeleteStuff = (x, y, z, i) => {
+      let worldVector = this.toWorldPosition(this.blocks[i].position);
+      let added = new THREE.Vector3(worldVector.x + x, worldVector.y + y, worldVector.z + z);
+      let localAdded = nextChunk.toLocalPosition(added);
+      if (nextChunk.getBlockByPosition(localAdded) != undefined) {
+        this.removeFace(direction, this.blocks[i].position);
+      }
+    };
+
+    for (let i = 0; i < this.blocks.length; i++) {
+      switch (direction) {
+        case Block.Direction.left:
+          if (this.blocks[i].position.x == 0) {
+            actuallyDeleteStuff(-1, 0, 0, i);
+          }
+          break;
+        case Block.Direction.right:
+          if (this.blocks[i].position.x == this.chunkSize - 1) {
+            actuallyDeleteStuff(1, 0, 0, i);
+          }
+          break;
+
+        case Block.Direction.forward:
+          if (this.blocks[i].position.z == 0) {
+            actuallyDeleteStuff(0, 0, -1, i);
+          }
+          break;
+        case Block.Direction.backwards:
+          if (this.blocks[i].position.z == this.chunkSize - 1) {
+            actuallyDeleteStuff(0, 0, 1, i);
+          }
+          break;
+      }
+    }
+    this.updateGeometry();
+  }
+
+  toLocalPosition(position) {
+    return new THREE.Vector3(position.x - this.mesh.position.x / 2, position.y - this.mesh.position.y / 2, position.z - this.mesh.position.z / 2);
+  }
+  toWorldPosition(position) {
+    return new THREE.Vector3(this.mesh.position.x / 2 + position.x, this.mesh.position.y / 2 + position.y, this.mesh.position.z / 2 + position.z);
+  }
 
   potentialRescaleGeometryBuffer() {
     if (this.positionsSize >= this.amountVerts * this.rescaleAmount - 2) {
@@ -214,15 +310,16 @@ export class Chunk {
     }
   }
 
-  generateChunk(size) {
+  generateChunk() {
     this.resetWorld();
 
     this.blocks = [];
     let positions = [];
-    for (let x = 0; x < size; x++) {
-      for (let y = 0; y < size; y++) {
+    for (let x = 0; x < this.chunkSize; x++) {
+      for (let y = 0; y < this.chunkSize; y++) {
         //console.log(x+this.pos.x);
-        let pos = new THREE.Vector3(x, Math.floor(5 * (1 + noise.simplex2((x + this.pos.x / 2) / 50, (y + this.pos.z / 2) / 50))), y);
+        //let pos = new THREE.Vector3(x, Math.floor(10 * (1 + noise.simplex2((x + this.pos.x / 2) / 50, (y + this.pos.z / 2) / 50))), y);
+        let pos = new THREE.Vector3(x, Math.floor(10), y);
         positions.push(pos);
         this.blocks.push(new Gras(pos));
       }
@@ -270,6 +367,21 @@ export class Chunk {
     this.addFace(Block.Direction.right, offset);
     this.updateGeometry();
   }
+
+  getBlockByPosition(position) {
+    //console.log("first pos" + position.x + " and " + position.y + " and " + position.z);
+    for (let i = 0; i < this.blocks.length; i++) {
+      if (this.blocks[i].position.x == position.x) {
+        //console.log(this.blocks[i].position);
+      }
+      if (this.blocks[i].position.x == position.x && this.blocks[i].position.y == position.y && this.blocks[i].position.z == position.z) {
+        return this.blocks[i];
+      }
+    }
+    return undefined;
+  }
+
+  getMeshVerticiesByBlock(block, direction) {}
 
   generateFromPositions(arr, minX, minY, maxX, maxY) {
     let hashArr = new Map();
@@ -344,6 +456,14 @@ export class Chunk {
     }
     this.positionsSize = 0;
     this.updateGeometry();
+  }
+
+  findBlockByName(name) {
+    for (let i = 0; i < this.blocks.length; i++) {
+      if (this.blocks[i].name == name) {
+        return this.blocks[i];
+      }
+    }
   }
 
   updateGeometry() {

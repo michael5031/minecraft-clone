@@ -21,20 +21,25 @@ export class ControlHandler {
 
     //this.cur++;
 
-    if (e.keyCode != 32) {
-      return;
+    //space
+    if (e.keyCode == 70) {
+      let chunk = this.upper[0].getChunkAtPosition(this.upper[1].position);
+      for (let i = 0; i < chunk.positionsSize; i++) {
+        chunk.positions[i] = 0;
+      }
+      chunk.updateGeometry();
     }
 
-    // for (let i = 0; i < 10; i++) {
-    //   for (let j = 0; j < 100; j++) {
-    //     for (let k = 0; k < 100; k++) {
-    //       pos.push(new THREE.Vector3(i, k, j));
-    //     }
-    //   }
-    // }
-    this.upper[0].getChunkAtPosition(this.upper[1].position).removeFace(Block.Direction.down, new THREE.Vector3(0, 0, 0));
-    //this.worldgenerator[0].resetWorld();
-    //this.worldgenerator[0].generateFromPositions(pos);
+    if (e.keyCode == 32) {
+      let chunk = this.upper[0].getChunkAtPosition(this.upper[1].position);
+      //deletes first found gras blocks face
+      // let firstGrasBlock = chunk.findBlockByName("Gras");
+      // chunk.removeFace(Block.Direction.forward, firstGrasBlock.position);
+      // chunk.removeFace(Block.Direction.up, firstGrasBlock.position);
+      // chunk.updateGeometry();
+      //chunk.addFace(Block.Direction.up, firstGrasBlock.position)
+      console.log(chunk.surroundingChunks);
+    }
   }
 }
 

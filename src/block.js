@@ -2,6 +2,7 @@ import * as THREE from "../three/build/three.module.js";
 
 export class Block {
   constructor(props) {
+    this.name = "undefined lol";
     if (props.vec) {
       this.position = props.vec;
     }
@@ -28,6 +29,16 @@ export class Block {
   static VectorToString(vec) {
     return vec.x + ":" + vec.y + ":" + vec.z;
   }
+
+  static DirectionalFaces = Object.freeze({
+    0: [-1, 1, 1, 1, 1, 1, 1, 1, -1, -1, 1, 1, 1, 1, -1, -1, 1, -1],
+    1: [1, -1, -1, 1, -1, 1, -1, -1, 1, 1, -1, -1, -1, -1, 1, -1, -1, -1],
+    2: [-1, 1, 1, -1, 1, -1, -1, -1, -1, -1, 1, 1, -1, -1, -1, -1, -1, 1],
+    3: [1, 1, -1, 1, 1, 1, 1, -1, 1, 1, 1, -1, 1, -1, 1, 1, -1, -1],
+    4: [-1, 1, -1, 1, 1, -1, 1, -1, -1, -1, 1, -1, 1, -1, -1, -1, -1, -1],
+    5: [1, 1, 1, -1, 1, 1, -1, -1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1],
+  });
+
   /*
   static Textures = Object.freeze({
     0: "gras.png",
@@ -45,11 +56,13 @@ export class Gras extends Block {
       uvPosSide: new THREE.Vector2(0, 0),
       uvPosDown: new THREE.Vector2(2, 0),
     });
+    this.name = "Gras";
   }
 }
 
 export class Dirt extends Block {
   constructor(vec) {
     super({ vec: vec, uvPos: new THREE.Vector2(2, 0) });
+    this.name = "Dirt";
   }
 }
